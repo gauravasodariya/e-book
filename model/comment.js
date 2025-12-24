@@ -1,14 +1,31 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
-const commentSchema = new mongoose.Schema({
-    description : {
-        type : String,
-        required : true
+const commentSchema = new mongoose.Schema(
+  {
+    book: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "Book", 
+        required: true 
     },
-    user : {
-        type : mongoose.Schema.Types.objectId,
-        ref : user
-    }
-})
-const comment = mongoose.model('comment',commentSchema)
-module.exports = comment
+    user: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "User", 
+        required: true },
+    content: { 
+        type: String, 
+        required: true
+    },
+    rating: {
+       type: Number, 
+       min: 1, max: 5 
+      },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Comment", commentSchema);
