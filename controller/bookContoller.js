@@ -1,63 +1,116 @@
-const Book = require('../models/book');
+const Book = require("../model/book");
 
-async function readBooks(req, res) {
+async function createBook(req, res) {
   try {
-    let book = await Book.findOne(req.params.id);
-    if (user) {
-      return res.send(book);
+    const { title, description, content, category, status } = req.body;
+    if (!title || !category) {
+      return res.status(400).json({ message: "Title and category are required" });
     }
- }catch(err){
-    return res.send(err)
- }
-}
-async function addBooks(req,res){
-    try{
-        if (req.user.role !== 'author') {
-           return res.status(403).json({ msg: 'Not authorized' });
-        }
-        const bookdata = {
-            name : req.body.name,
-            user : req.user.id,
-            category : req.body.category_name,
-        }
-        const newBook = new Book(bookData);
-        newBook.save();
-    }catch(err){
-        res.send('Error in adding books')
-    }
-}
-async function updateBook(req, res) {
-  try {
-    if (req.user.role !== 'author') {
-      return res.status(403).json({ msg: 'Not authorized' });
-    }
-    let book = await User.findById(req.params.id);
-    if (!book) return res.status(404).json({ msg: 'Book not found' });
 
-    user = await Book.findByIdAndUpdate(req.params.id,req.body);
-    res.json(book);
+    const book = await Book.create({
+      title,
+      description,
+      content,
+      category,
+      status: status === "published" ? "published" : "draft",
+      author: req.user.id,
+    });
+
+    return res.status(201).json(book);
   } catch (err) {
     console.error(err.message);
-    res.status(500).send('Server Error');
+    return res.status(500).json({ message: "Server error" });
   }
 }
-async function deleteBook(req,res){
-    try{
-         if (req.user.role !== 'author') {
-           return res.status(403).json({ msg: 'Not authorized' });
-        }
-        const book  = await findById(req.params.id)
-        if (!book) 
-            return res.status(404).json({ msg: 'Book not found' });
 
-        await Book.findByIdAndDelete(req.params.id)
-    }catch(err){
-        return res.send('Error in deleting books')
+async function updateBook(req, res) {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    const book = await Book.findById(id);
+    if (!book) return res.status(404).json({ message: "Book not found" });
+
+    if (String(book.author) !== req.user.id) {
+      return res.status(403).json({ message: "Not allowed" });
     }
+
+    const allowed = ["title", "description", "content", "category", "status"];
+    allowed.forEach((field) => {
+      if (field in updates) {
+        book[field] = updates[field];
+      }
+    });
+
+    await book.save();
+    return res.json(book);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Server error" });
+  }
 }
+
+async function deleteBook(req, res) {
+  try {
+    const { id } = req.params;
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+    if (String(book.author) !== req.user.id) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+    await book.deleteOne();
+    return res.json({ message: "Book deleted" });
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+async function getBooks(req, res) {
+  try {
+    const filter = {};
+    if (req.query.category) {
+      filter.category = req.query.category;
+    }
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+    if (!req.user || req.user.role === "reader") {
+      filter.status = "published";
+    }
+
+    const books = await Book.find(filter).sort({ createdAt: -1 });
+    return res.json(books);
+  } catch (err) {
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+async function getBookById(req, res) {
+  try {
+    const { id } = req.params;
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    if (
+      book.status !== "published" &&
+      (!req.user || req.user.id !== String(book.author))
+    ) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
+    return res.json(book);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
 module.exports = {
-  readBooks,
-  addBooks,
+  createBook,
   updateBook,
-  deleteBook
+  deleteBook,
+  getBooks,
+  getBookById,
 };
