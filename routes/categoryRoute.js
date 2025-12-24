@@ -1,11 +1,17 @@
-const express = require('express');
-const app = express()
-const categoryController = require('../../controller/categoryController');
+const express = require("express");
+const {
+  createCategory,
+  getCategories,
+  updateCategory,
+  deleteCategory,
+} = require("../controller/categoryController");
+const { auth, authorize } = require("../middleware/auth");
 
-app.get('/:id', auth, categoryController.readCategory);
-app.post('/add-category', auth, bookController.addCategory);
-app.put('/:id', auth, bookController.UpdateCategiory);
-app.delete('/:id', auth, bookController.DeleteCategory);
+const router = express.Router();
+
+router.get("/", getCategories);
+router.post("/", auth, authorize("author"), createCategory);
+router.put("/:id", auth, authorize("author"), updateCategory);
+router.delete("/:id", auth, authorize("author"), deleteCategory);
 
 module.exports = router;
-
